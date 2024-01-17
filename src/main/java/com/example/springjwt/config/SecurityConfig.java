@@ -1,5 +1,7 @@
 package com.example.springjwt.config;
 
+import com.example.springjwt.jwt.JWTFilter;
+import com.example.springjwt.jwt.JWTUtil;
 import com.example.springjwt.jwt.LoginFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +20,12 @@ public class SecurityConfig {
 
     //AuthenticationManager가 인자로 받을 AuthenticationConfiguraion 객체 생성자 주입
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final JWTUtil jwtUtil;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
 
         this.authenticationConfiguration = authenticationConfiguration;
+        this.jwtUtil = jwtUtil;
     }
 
     //AuthenticationManager Bean 등록
@@ -62,11 +66,14 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/", "/join").permitAll() // 로그인,main,회원가입에서는 모두 허용
                         .requestMatchers("/admin").hasRole("ADMIN") //admin페이지는 "ADMIN"이란 권한을 가진 사용자만 접근 가능
                         .anyRequest().authenticated()); // 그 외 나머지는 로그인한 사용자만 접근 가능
+        //JWTFilter 등록
+        http
+                .addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
 
         //필터 추가 LoginFilter()는 인자를 받음 (AuthenticationManager() 메소드에 authenticationConfiguration 객체를 넣어야 함) 따라서 등록 필요
         http
-                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration)), UsernamePasswordAuthenticationFilter.class);
-        //          등록할 필터-----------------  ------------------------------------------ 어디에
+                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        //          등록할 필터-----------------                                                              ------------------------------------------ 어디에
         /*
         .addFilterAt(Filter filter, Class<? extends Filter> atFilter) => 원하는 자리에
         .addFilterBefore(Filter filter, Class<? extends Filter> beforeFilter) => 해당하는 필터 전에
